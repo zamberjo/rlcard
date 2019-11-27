@@ -1,4 +1,4 @@
-from copy import deepcopy
+# from copy import deepcopy
 
 from rlcard.games.cotos.dealer import CotosDealer as Dealer
 from rlcard.games.cotos.player import CotosPlayer as Player
@@ -12,6 +12,9 @@ class CotosGame(object):
         self.num_players = 4
         self.trump = None
         self.payoffs = [0 for _ in range(self.num_players)]
+        self.second_round_flag = False
+        self.last_cards_flag = False
+        self.team_scores = [0, 0]
 
     def init_game(self):
         ''' Initialize players and state
@@ -60,18 +63,22 @@ class CotosGame(object):
                 (dict): next player's state
                 (int): next plater's id
         '''
-
-        if self.allow_step_back:
-            # First snapshot the current state
-            his_dealer = deepcopy(self.dealer)
-            his_round = deepcopy(self.round)
-            his_players = deepcopy(self.players)
-            self.history.append((his_dealer, his_players, his_round))
-
-        self.round.proceed_round(self.players, action)
+        end_round = self.round.proceed_round(self.players, action)
+        if end_round:
+            team_player = self.update_score()
+            if self.team_scores[team_player] >= 99:
+                self.is_over = True
+            else
         player_id = self.round.current_player
         state = self.get_state(player_id)
         return state, player_id
+
+    def update_score(self):
+        player_win, score = self.round.get_score()
+        self.next_round_player = player_win
+        team_player = player_win % 2
+        self.team_scores[team_player] += score
+        return team_player
 
     def step_back(self):
         ''' Return to the previous state of the game
@@ -79,10 +86,7 @@ class CotosGame(object):
         Returns:
             (bool): True if the game steps back successfully
         '''
-        if not self.history:
-            return False
-        self.dealer, self.players, self.round = self.history.pop()
-        return True
+        return False
 
     def get_state(self, player_id):
         ''' Return player's state
@@ -131,7 +135,7 @@ class CotosGame(object):
         ''' Return the number of applicable actions
 
         Returns:
-            (int): The number of actions. There are 61 actions
+            (int): The number of actions. There are 6 possible actions
         '''
         return 6
 
@@ -152,24 +156,25 @@ class CotosGame(object):
         return self.round.is_over
 
 
-# # For test
-# if __name__ == '__main__':
-#    #import time
-#    #random.seed(0)
-#    #start = time.time()
-#    game = CotosGame()
-#    for _ in range(1):
-#        state, button = game.init_game()
-#        print(button, state)
-#        i = 0
-#        while not game.is_over():
-#            i += 1
-#            legal_actions = game.get_legal_actions()
-#            print('legal_actions', legal_actions)
-#            action = np.random.choice(legal_actions)
-#            print('action', action)
-#            print()
-#            state, button = game.step(action)
-#            print(button, state)
-#        print(game.get_payoffs())
-#    print('step', i)
+# For test
+if __name__ == '__main__':
+    import numpy as np
+    # import time
+    # random.seed(0)
+    # start = time.time()
+    game = CotosGame()
+    for _ in range(1):
+        state, button = game.init_game()
+        print(button, state)
+        i = 0
+        while not game.is_over():
+            i += 1
+            legal_actions = game.get_legal_actions()
+            print('legal_actions', legal_actions)
+            action = np.random.choice(legal_actions)
+            print('action', action)
+            print()
+            state, button = game.step(action)
+            print(button, state)
+        print(game.get_payoffs())
+    print('step', i)

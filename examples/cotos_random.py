@@ -11,7 +11,10 @@ set_global_seed(0)
 
 # Set up agents
 agent_0 = RandomAgent(action_num=env.action_num)
-env.set_agents([agent_0])
+agent_1 = RandomAgent(action_num=env.action_num)
+agent_2 = RandomAgent(action_num=env.action_num)
+agent_3 = RandomAgent(action_num=env.action_num)
+env.set_agents([agent_0, agent_1, agent_2, agent_3])
 
 for episode in range(episode_num):
 

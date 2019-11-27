@@ -7,6 +7,18 @@ class CotosCard(object):
         'trait': [
             '1', '2', '3', '4', '5', '6', '7', 'sota', 'caballo', 'rey'
         ],
+        'points': {
+            '1': 11,
+            '2': 0,
+            '3': 10,
+            '4': 0,
+            '5': 0,
+            '6': 0,
+            '7': 0,
+            'sota': 3,
+            'caballo': 2,
+            'rey': 4
+        }
     }
 
     def __init__(self, suit, trait):
@@ -18,6 +30,8 @@ class CotosCard(object):
         '''
         self.suit = suit
         self.trait = trait
+        self.points = self.info["points"][trait]
+        self.position = self.info["trait"].index(trait)
         self.str = self.get_str()
 
     def get_str(self):
@@ -27,7 +41,6 @@ class CotosCard(object):
             (str): The string of card's color and trait
         '''
         return self.suit + '-' + self.trait
-
 
     @staticmethod
     def print_cards(cards):
