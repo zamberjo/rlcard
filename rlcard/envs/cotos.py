@@ -73,7 +73,7 @@ class CotosEnv(Env):
     def extract_state(self, state):
         obs = np.zeros((7, 4, 15), dtype=int)
         encode_hand(obs[:3], state['hand'])
-        encode_target(obs[3], state['target'])
+        # encode_target(obs[3], state['target'])
         encode_hand(obs[4:], state['others_hand'])
         legal_action_id = self.get_legal_actions()
         extrated_state = {
@@ -96,5 +96,6 @@ class CotosEnv(Env):
         legal_actions = self.game.get_legal_actions()
         legal_ids = [
             ACTION_SPACE[action] for action in legal_actions
+            if action in ACTION_SPACE
         ]
         return legal_ids

@@ -99,7 +99,7 @@ class CotosRound(object):
         state = {}
         player = players[player_id]
         state['hand'] = cards2list(player.hand)
-        state['target'] = self.target.str
+        # state['target'] = self.target.str
         state['played_cards'] = cards2list(self.played_cards)
         others_hand = []
         for player in players:
