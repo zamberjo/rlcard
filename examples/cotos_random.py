@@ -16,6 +16,7 @@ agent_2 = RandomAgent(action_num=env.action_num)
 agent_3 = RandomAgent(action_num=env.action_num)
 env.set_agents([agent_0, agent_1, agent_2, agent_3])
 
+import pdb; pdb.set_trace()
 for episode in range(episode_num):
 
     # Generate data from the environment

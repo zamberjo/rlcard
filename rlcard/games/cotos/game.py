@@ -65,10 +65,7 @@ class CotosGame(object):
         '''
         end_round = self.round.proceed_round(self.players, action)
         if end_round:
-            team_player = self.update_score()
-            if self.team_scores[team_player] >= 99:
-                self.is_over = True
-            else
+            self.update_score()
         player_id = self.round.current_player
         state = self.get_state(player_id)
         return state, player_id
@@ -78,7 +75,6 @@ class CotosGame(object):
         self.next_round_player = player_win
         team_player = player_win % 2
         self.team_scores[team_player] += score
-        return team_player
 
     def step_back(self):
         ''' Return to the previous state of the game

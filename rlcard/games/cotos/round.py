@@ -56,17 +56,16 @@ class CotosRound(object):
                 remove_index = index
                 break
 
-        card = player.hand.pop(remove_index)
-        if not player.hand:
-            self.is_over = True
-            # TODO: Recuento de puntos y ver si hay nueva ronda
-            self.winner = [self.current_player]
-
-        self.played_cards.append(card)
-
         end_round = False
         if len(self.played_cards) == self.num_players:
             end_round = True
+
+        card = player.hand.pop(remove_index)
+        if not player.hand and end_round:
+            import pdb; pdb.set_trace()
+            self.is_over = True
+
+        self.played_cards.append(card)
 
         # perform the number action
         self.current_player = (
@@ -121,8 +120,6 @@ class CotosRound(object):
             return 0
         elif card1.position < card2.position:
             return 1
-        print(card1)
-        print(card2)
         raise NotImplementedError()
 
     def get_legal_actions(self, players, player_id):
@@ -159,7 +156,6 @@ class CotosRound(object):
         state = {}
         player = players[player_id]
         state['hand'] = cards2list(player.hand)
-        # state['target'] = self.target.str
         state['played_cards'] = cards2list(self.played_cards)
         others_hand = []
         for player in players:
@@ -168,75 +164,3 @@ class CotosRound(object):
         state['others_hand'] = cards2list(others_hand)
         state['legal_actions'] = self.get_legal_actions(players, player_id)
         return state
-
-    # def replace_deck(self):
-    #     ''' Add cards have been played to deck
-    #     '''
-    #     self.dealer.deck.extend(self.played_cards)
-    #     self.dealer.shuffle()
-    #     self.played_cards = []
-
-    def _perform_draw_action(self, players):
-        # replace deck if there is no card in draw pile
-        # if not self.dealer.deck:
-        #     self.replace_deck()
-        #     #self.is_over = True
-        #     #self.winner = UnoJudger.judge_winner(players)
-        #     #return None
-
-        card = self.dealer.deck.pop()
-
-        # draw a wild card
-        if card.type == 'wild':
-            card.suit = np.random.choice(Card.info['suit'])
-            self.target = card
-            self.played_cards.append(card)
-            self.current_player = (
-                self.current_player + self.direction) % self.num_players
-
-        # draw a card with the same color of target
-        elif card.suit == self.target.suit:
-            self.target = card
-            self.played_cards.append(card)
-            self.current_player = (
-                self.current_player + self.direction) % self.num_players
-
-        # draw a card with the diffrent color of target
-        else:
-            players[self.current_player].hand.append(card)
-            self.current_player = (self.current_player + self.direction) % self.num_players
-
-    def _preform_non_number_action(self, players, card):
-        current = self.current_player
-        direction = self.direction
-        num_players = self.num_players
-
-        # # perform reverse card
-        # if card.trait == 'reverse':
-        #     self.direction = -1 * direction
-
-        # # perfrom skip card
-        # elif card.trait == 'skip':
-        #     current = (current + direction) % num_players
-
-        # # perform draw_2 card
-        # elif card.trait == 'draw_2':
-        #     # if len(self.dealer.deck) < 2:
-        #     #     self.replace_deck()
-        #     #     #self.is_over = True
-        #     #     #self.winner = UnoJudger.judge_winner(players)
-        #     #     #return None
-        #     # self.dealer.deal_cards(players[(current + direction) % num_players], 2)
-        #     # current = (current + direction) % num_players
-
-        # # perfrom wild_draw_4 card
-        # elif card.trait == 'wild_draw_4':
-        #     # if len(self.dealer.deck) < 4:
-        #     #     self.replace_deck()
-        #     #     #self.is_over = True
-        #     #     #self.winner = UnoJudger.judge_winner(players)
-        #     #     #return None
-        #     self.dealer.deal_cards(players[(current + direction) % num_players], 4)
-        #     current = (current + direction) % num_players
-        self.current_player = (current + self.direction) % num_players
-        self.target = card
