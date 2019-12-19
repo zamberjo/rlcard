@@ -2,6 +2,7 @@
 import socketio
 import asyncio
 import time
+import sys
 from random import randrange
 
 # SERVER = "https://cotosgame.es"
@@ -18,6 +19,8 @@ class Player():
     trump = {}
     deck = []
     winner_team = False
+    team1_score = 0
+    team2_score = 0
 
     def __init__(self, name, debug=False):
         self.name = name
@@ -31,7 +34,6 @@ class Player():
         self.sio.connect(SERVER)
 
     def emit(self, event, params=None):
-        # print(f"[EMIT] {event}({params})")
         if not self.sio.sid:
             self.connect()
         if not params:
@@ -47,6 +49,55 @@ class Player():
             "hand": [self.print_card(c) for c in self.hand],
             "is_turn": self.is_turn,
         }
+
+    def getPlayerIndexWinner(self):
+        start_turn_player_index = (self.index + 1) % 4
+        card_played = self.table[start_turn_player_index]
+        value_card_played = self.get_card_turn_value(
+            card_played, card_played.get("suit"))
+        winner_player_index = start_turn_player_index
+        for _ in range(2):
+            start_turn_player_index = (start_turn_player_index + 1) % 4
+            next_card_played = self.table[start_turn_player_index]
+            value_next_card_played = self.get_card_turn_value(
+                next_card_played, card_played.get("suit"))
+            if value_card_played < value_next_card_played:
+                winner_player_index = start_turn_player_index
+        return winner_player_index
+
+    def check_trusted(self):
+        trusted = False
+        n_cards_played = len([c for c in self.table if c])
+        if n_cards_played == 3:
+            playerIndexTurnWinner = self.getPlayerIndexWinner()
+            trusted = (
+                (self.index in (0, 2) and playerIndexTurnWinner in (0, 2)) or
+                (self.index in (1, 3) and playerIndexTurnWinner in (1, 3))
+            )
+        return trusted
+
+    def check_last_turn_winned(self):
+        # TODO: Hacer esto!
+        return True
+
+    def check_sing_fourty(self):
+        can_sing = False
+        if self.check_last_turn_winned():
+            cards = list(filter(
+                lambda c: c.get("number") in ('K', 'S'),
+                self.hand))
+                # TODO: ACABAR ESTO!
+            can_sing = True
+        return can_sing
+
+    def check_sing_twenty(self):
+        can_sing = False
+        if self.check_last_turn_winned():
+            cards = list(filter(
+                lambda c: c.get("number") in ('K', 'S'),
+                self.hand))
+            can_sing = True
+        return can_sing
 
     def get_legal_actions(self):
         if not self.lastcards_mode:
@@ -83,6 +134,8 @@ class Player():
                 lambda c: c.get("suit") == self.trump.get("suit"), self.hand))
             if not cards_trump:
                 return self.hand
+            if self.check_trusted():
+                return self.hand
             for card in cards_trump:
                 card_value = self.get_card_turn_value(
                     card, first_card.get("suit"))
@@ -97,6 +150,8 @@ class Player():
                     availables_cards += [card]
             if not availables_cards:
                 availables_cards = cards_trump
+        sing_fourty = self.check_sing_fourty()
+        sing_twenty = self.check_sing_twenty()
         return list(availables_cards)
 
     def get_card_turn_value(self, card, turn_suit):
@@ -134,16 +189,19 @@ class Player():
     def play_card(self):
         try:
             cards_legal_actions = self.get_legal_actions()
+            if not cards_legal_actions:
+                time.sleep(1)
+                return
             card_index = randrange(len(cards_legal_actions))
             card = cards_legal_actions[card_index]
-            if self.lastcards_mode:
-                print("\tTrump: {}".format(self.print_card(self.trump)))
-                print("\tTable: {}".format(self.serialize_table()))
-                print("\tHand: {}".format(self.serialize().get("hand")))
-                print("\tLegal: {}".format([
-                    self.print_card(c) for c in cards_legal_actions]))
-                print("\tCard: {}".format(self.print_card(card)))
-                print("")
+            # if self.lastcards_mode:
+            #     print("\tTrump: {}".format(self.print_card(self.trump)))
+            #     print("\tTable: {}".format(self.serialize_table()))
+            #     print("\tHand: {}".format(self.serialize().get("hand")))
+            #     print("\tLegal: {}".format([
+            #         self.print_card(c) for c in cards_legal_actions]))
+            #     print("\tCard: {}".format(self.print_card(card)))
+            #     print("")
             self.emit("playCard", {"card": card})
             self.is_turn = False
         except Exception as e:
@@ -158,7 +216,6 @@ class Player():
             mult = -1
         payload = data.get("tableScore")
         payload = (payload * 100) / 54
-        print("Ganan el turno!" if mult > 0 else "Pierden el turno!")
         return payload * mult
 
     def print_card(self, card):
@@ -218,9 +275,6 @@ class Player():
         @sio.on('setTrump')
         def set_trump(data):
             self.trump = data.get("trump")
-            if self.debug:
-                print("TRUMP {}".format(self.trump))
-                # print("TRUMP {}".format(self.print_card(self.trump)))
 
         @sio.on('playedCard')
         def played_card(data):
@@ -233,80 +287,70 @@ class Player():
                 self.hand = [
                     c for c in self.hand if c.get(
                         "name") != card.get("name")]
-            if self.debug:
-                try:
-                    print("Player {} play card: {}".format(
-                        player_index, self.print_card(card)))
-                except Exception as e:
-                    import pdb; pdb.set_trace()
-                    raise
             self.table[player_index] = card
             self.deck += [card]
             if data.get("endTurn"):
                 if self.debug:
-                    self.print()
+                    # TODO: Que hacer con el payload!!
                     payload = self.get_payload(data)
-                    print(f"Payload: {payload}")
-                    print("#" * 50)
                 self.table = [None, None, None, None]
                 sio.emit("getHand", {})
-            if data.get("winner"):
-                self.winner = data.get("winner")
-                if self.debug:
-                    print("WINNER {}".format(data.get("winner")))
-            elif data.get("endGame"):
-                if self.debug:
-                    print("ENDGAME!")
+            if data.get("endGame"):
                 sio.emit('checkWinners', {})
             elif data.get("lastCardsMode"):
-                if self.debug:
-                    print("ÚLTIMAS!!")
                 self.lastcards_mode = True
 
         @sio.on('endGame')
         def end_game(data):
-            if self.debug:
-                print(f"dada: {data}")
             if data.get("deVueltaMode"):
                 self.is_turn = False
                 sio.emit("getTrump", {})
                 sio.emit("getHand", {})
                 sio.emit("getNextTurnPlayer", {})
-                time.sleep(5)
             else:
                 self.winner_team = "team1"
+                self.team1_score = data.get("team1")
+                self.team2_score = data.get("team2")
                 if data.get("team1") < data.get("team2"):
                     self.winner_team = "team2"
-                
+                sio.disconnect()
             
 
-player1 = Player("Player1", debug=True)
-player1.enter_game()
-player2 = Player("Player2")
-player2.enter_game()
-player3 = Player("Player3")
-player3.enter_game()
-player4 = Player("Player4")
-player4.enter_game()
-time.sleep(5)
 while True:
-    try:
-        if player1.winner_team:
-            print(f"Ganador: {player1.winner_team}")
-            break
-        if player1.is_turn:
-            player1.play_card()
-        elif player2.is_turn:
-            player2.play_card()
-        elif player3.is_turn:
-            player3.play_card()
-        elif player4.is_turn:
-            player4.play_card()
-        player1.get_next_turn_player()
-        player2.get_next_turn_player()
-        player3.get_next_turn_player()
-        player4.get_next_turn_player()
-        time.sleep(1)
-    except Exception:
-        pass
-print("END!")
+    game_start_time = time.time()
+    print("#" * 50)
+    print("Partida nueva!")
+    print("#" * 50)
+    player1 = Player("Player1", debug=True)
+    player1.enter_game()
+    player2 = Player("Player2")
+    player2.enter_game()
+    player3 = Player("Player3")
+    player3.enter_game()
+    player4 = Player("Player4")
+    player4.enter_game()
+    time.sleep(5)
+    while True:
+        try:
+            if player1.winner_team:
+                print(f"Team 1: {player1.team1_score}")
+                print(f"Team 2: {player1.team2_score}")
+                print(f"Ganador: {player1.winner_team}")
+                break
+            if player1.is_turn:
+                player1.play_card()
+            elif player2.is_turn:
+                player2.play_card()
+            elif player3.is_turn:
+                player3.play_card()
+            elif player4.is_turn:
+                player4.play_card()
+            player1.get_next_turn_player()
+            player2.get_next_turn_player()
+            player3.get_next_turn_player()
+            player4.get_next_turn_player()
+            time.sleep(1)
+        except Exception:
+            pass
+    print("Time %.2f" % (time.time() - game_start_time))
+    time.sleep(1)
