@@ -1,168 +1,122 @@
-from copy import deepcopy
+import time
 
-# from rlcard.games.blackjack.dealer import BlackjackDealer as Dealer
-# from rlcard.games.blackjack.player import BlackjackPlayer as Player
-# from rlcard.games.blackjack.judger import BlackjackJudger as Judger
+from rlcard.games.cotos.player import CotosPlayer as Player
+from rlcard.games.cotos.utils import cards2list
 
 class CotosGame(object):
+    ''' Cotos game class. This class will interact with outer environment.
+    '''
+    trump = None
+    dealer = None
+    payoffs = []
+    players = []
+    table = []
+    lastcards_mode = False
+    last_turn_winner = None
+    winner_team = None
+    sing_suits = []
+
+    def __init__(self):
+        self.num_players = 4
+        # 2 payoffs, 1 by team
+        self.payoffs = [0 for _ in range(int(self.num_players / 2))]
 
     def init_game(self):
-        ''' Initialilze the game
-
-        Returns:
-            state (dict): the first state of the game
-            player_id (int): current player's id
+        ''' Initialize players in the game and start round 1
         '''
-        self.dealer = Dealer()
-        self.player = Player(0)
-        self.judger = Judger()
-        self.dealer.deal_card(self.player)
-        self.dealer.deal_card(self.dealer)
-        self.dealer.deal_card(self.player)
-        self.dealer.deal_card(self.dealer)
-        self.player.status, self.player.score = self.judger.judge_round(self.player)
-        self.dealer.status, self.dealer.score = self.judger.judge_round(self.dealer)
-        self.winner = {'dealer':0, 'player':0}
-        self.history = []
-        return self.get_state(self.get_player_id()), self.get_player_id()
+        # Initalize payoffs
+        self.payoffs = [0 for _ in range(int(self.num_players / 2))]
 
-    def step(self, action):
-        ''' Get the next state
+        # Initialize four players to play the game
+        self.players = [Player(i) for i in range(self.num_players)]
+        map(lambda p: p.enter_game(), self.players)
 
-        Args:
-            action (str): a specific action of blackjack. (Hit or Stand)
+        while True:
+            players_turn = list(filter(lambda p: p.is_turn, self.players))
+            if players_turn:
+                players_turn = players_turn[0]
+                break
+            time.sleep(1)
+        state = self.get_state(players_turn)
+        return state, players_turn.id
 
-        Returns:/
-            dict: next player's state
-            int: next plater's id
+    def set_trump(self, card):
+        ''' Establecemos el triunfo de la partida.
         '''
-        if self.allow_step_back:
-            p = deepcopy(self.player)
-            d = deepcopy(self.dealer)
-            w = deepcopy(self.winner)
-            self.history.append((d,p,w))
+        self.trump = card
 
-        next_state = {}
-        # Play hit
-        if action != "stand":
-            self.dealer.deal_card(self.player)
-            self.player.status, self.player.score = self.judger.judge_round(self.player)
-
-            if self.player.status == 'bust':
-                # game over, set up the winner, print out dealer's hand
-                self.judger.judge_game(self)
-                dealer_hand = [card.get_index() for card in self.dealer.hand]
-            else:
-                # game continue, hide the first card of dealer's hand
-                dealer_hand = [card.get_index() for card in self.dealer.hand[1:]]
-
-            hand = [card.get_index() for card in self.player.hand]
-            next_state['state'] = (hand, dealer_hand)
-            next_state['actions'] = ('hit', 'stand')
-
-        elif action == "stand":
-
-            while self.judger.judge_score(self.dealer.hand) < 17:
-                self.dealer.deal_card(self.dealer)
-                self.dealer.status, self.dealer.score = self.judger.judge_round(self.dealer)
-            self.judger.judge_game(self)
-            hand = [card.get_index() for card in self.player.hand]
-            dealer_hand = [c.get_index() for c in self.dealer.hand]
-            next_state['state'] = (hand, dealer_hand) # show all hand of dealer
-            next_state['actions'] = ('hit', 'stand')
-        return next_state, self.player.get_player_id()
-
-    def step_back(self):
-        ''' Return to the previous state of the game
-
-        Returns:
-            Status (bool): check if the step back is success or not
+    def add_sing_suits(self, suit):
+        ''' Guardamos el palo para no volver a cantar en este.
         '''
-        #while len(self.history) > 0:
-        if len(self.history) > 0:
-            self.dealer, self.player, self.winner = self.history.pop()
-            return True
-        return False
+        self.sing_suits += [suit]
 
-    @staticmethod
-    def get_player_num():
-        ''' Return the number of players in blackjack
-
-        Returns:
-            number_of_player (int): blackjack only have 1 player
+    def play_card(self, player, card):
+        ''' El jugador juega una carta.
         '''
-        return 1
+        self.table[player.index] = card
 
-    @staticmethod
-    def get_action_num():
-        ''' Return the number of applicable actions
-
-        Returns:
-            number_of_actions (int): there are only two actions (hit and stand)
+    def set_end_turn(self, team):
+        ''' Finaliza el turno, establecemos el equipo ganador.
         '''
-        return 2
+        self.last_turn_winner = team
+        for index, player in enumerate(self.players):
+            self.payoffs[index] = player.payoff
+            player.reset_payoff()
+        # TODO: Reseteamos la mesa ya?
+        self.table = [None, None, None, None]
 
-    def get_player_id(self):
-        ''' Return the current player's id
-
-        Returns:
-            player_id (int): current player's id
+    def set_lastcards_mode(self, mode):
+        ''' Establece el modo últimas cartas.
         '''
-        return self.player.get_player_id()
+        self.lastcards_mode = mode
+
+    def reset(self):
+        self.sing_suits = []
+    
+    def end_game(self, team):
+        ''' Establecemos el fin del juego.
+        '''
+        pass
+
+    def check_last_turn_winned(self, team):
+        return self.last_turn_winner == team
 
     def get_state(self, player):
-        ''' Return player's state
-
-        Args:
-            player_id (int): player id
-
-        Returns:
-            state (dict): corresponding player's state
+        ''' Devolvemos el estado de un jugador.
         '''
         state = {}
-        state['actions'] = ('hit', 'stand')
-        hand = [card.get_index() for card in self.player.hand]
-        if self.winner['player'] == 0 and self.winner['dealer'] == 0:
-            dealer_hand = [card.get_index() for card in self.dealer.hand[1:]]
-        else:
-            dealer_hand = [card.get_index() for card in self.dealer.hand]
-        state['state'] = (hand, dealer_hand)
+        state['hand'] = cards2list(player.hand)
+        state['trump'] = self.trump.get_str()
+        state['table'] = cards2list(self.table)
+        state['legal_actions'] = player.get_legal_actions(self.table)
         return state
 
-    def is_over(self):
-        ''' Check if the game is over
-
-        Returns:
-            status (bool): True/False
+    def step(self, action):
+        ''' Perform one draw of the game and return next player number, and the state for next player
         '''
-        if self.player.status == 'bust'or self.dealer.status == 'bust' or (self.winner['dealer'] != 0 or self.winner['player'] != 0):
-            return True
-        else:
-            return False
+        raise NotImplementedError
 
+    def step_back(self):
+        ''' Takes one step backward and restore to the last state
+        '''
+        raise NotImplementedError
 
-##########################################################
-#    # For testing
-#    def _start_game(self):
-#        while True:
-#            self.init_game()
-#            player = self.player.get_player_id()
-#            #state = self.get_state(player)
-#            action = ['hit', 'stand']
-#            while not self.is_over():
-#                act = random.choice(action)
-#                print("Status(Player, Dealer): ",(self.player.status, self.dealer.status))
-#                print("Score(Player, Dealer): ",(self.player.score, self.dealer.score))
-#                print("Player_action:",act)
-#                next_state, next_player = self.step(act)
-#
-#            print("Status(Player, Dealer): ",(self.player.status, self.dealer.status))
-#            print("Score(Player, Dealer): ",(self.player.score, self.dealer.score))
-#            print(self.winner)
-#            if self.dealer.score < 17 and self.winner['dealer'] == 1 and self.winner['player'] == 0:
-#                print(next_state)
-#                break
-#
-#if __name__ == "__main__":
-#    game = BlackjackGame()
-#    game._start_game()
+    def get_player_num(self):
+        ''' Retrun the number of players in the game
+        '''
+        raise NotImplementedError
+
+    def get_action_num(self):
+        ''' Return the number of possible actions in the game
+        '''
+        raise NotImplementedError
+
+    def get_player_id(self):
+        ''' Return the current player that will take actions soon
+        '''
+        raise NotImplementedError
+
+    def is_over(self):
+        ''' Return whether the current game is over
+        '''
+        raise NotImplementedError
