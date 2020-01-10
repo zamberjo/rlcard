@@ -11,7 +11,7 @@ ACTION_LIST = [
 for suit in SUIT_MAP.keys():
     for number in NUMBER_MAP.keys():
         ACTION_LIST += ["{}{}".format(suit, number)]
-for index, action in ACTION_LIST:
+for index, action in enumerate(ACTION_LIST):
     ACTION_SPACE[action] = index
 
 

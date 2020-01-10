@@ -1,6 +1,7 @@
 import time
 
 from rlcard.games.cotos.player import CotosPlayer as Player
+from rlcard.games.cotos.utils import ACTION_LIST
 from rlcard.games.cotos.utils import cards2list
 
 class CotosGame(object):
@@ -16,20 +17,23 @@ class CotosGame(object):
     winner_team = None
     sing_suits = []
 
-    def __init__(self):
+    def __init__(self, allow_step_back=False):
+        self.allow_step_back = allow_step_back
         self.num_players = 4
         # 2 payoffs, 1 by team
-        self.payoffs = [0 for _ in range(int(self.num_players / 2))]
+        self.payoffs = [0 for _ in range(self.num_players)]
 
     def init_game(self):
         ''' Initialize players in the game and start round 1
         '''
         # Initalize payoffs
-        self.payoffs = [0 for _ in range(int(self.num_players / 2))]
+        self.payoffs = [0 for _ in range(self.num_players)]
 
         # Initialize four players to play the game
-        self.players = [Player(i) for i in range(self.num_players)]
-        map(lambda p: p.enter_game(), self.players)
+        for playerIndex in range(self.num_players):
+            player = Player(self, playerIndex, "Player {}".format(playerIndex))
+            player.enter_game()
+            self.players += [player]
 
         while True:
             players_turn = list(filter(lambda p: p.is_turn, self.players))
@@ -91,6 +95,12 @@ class CotosGame(object):
         state['legal_actions'] = player.get_legal_actions(self.table)
         return state
 
+    def get_legal_actions(self):
+        player = list(filter(lambda p: p.is_turn, self.players))
+        if not player:
+            return []
+        return player[0].get_legal_actions(self.table)
+
     def get_payoffs(self):
         ''' Return the payoffs of the game
 
@@ -99,6 +109,16 @@ class CotosGame(object):
         '''
         return self.payoffs
 
+    def get_player_num(self):
+        ''' Retrun the number of players in the game
+        '''
+        return self.num_players
+
+    def get_action_num(self):
+        ''' Return the number of possible actions in the game
+        '''
+        return len(ACTION_LIST)
+
     def step(self, action):
         ''' Perform one draw of the game and return next player number, and the state for next player
         '''
@@ -106,16 +126,6 @@ class CotosGame(object):
 
     def step_back(self):
         ''' Takes one step backward and restore to the last state
-        '''
-        raise NotImplementedError
-
-    def get_player_num(self):
-        ''' Retrun the number of players in the game
-        '''
-        raise NotImplementedError
-
-    def get_action_num(self):
-        ''' Return the number of possible actions in the game
         '''
         raise NotImplementedError
 

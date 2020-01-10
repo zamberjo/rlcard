@@ -10,9 +10,9 @@ from rlcard.games.cotos.card import CotosCard
 
 class CotosEnv(Env):
 
-    def __init__(self):
+    def __init__(self, allow_step_back=False):
         # TODO: Esto hay que ver que es ya que es de tensorflow.
-        super().__init__(Game(), False)
+        super().__init__(Game(allow_step_back), allow_step_back)
         self.state_shape = [7, 4, 10]
 
     def print_state(self, player):
@@ -97,6 +97,8 @@ class CotosEnv(Env):
     def get_legal_actions(self):
         legal_actions = self.game.get_legal_actions()
         legal_ids = []
+        if not legal_actions:
+            return legal_ids
         for suit_can_sing in legal_actions[0]:
             legal_id = ACTION_SPACE["sing_{}".format(suit_can_sing)]
             legal_ids += [legal_id]
@@ -106,4 +108,5 @@ class CotosEnv(Env):
         for card_legal_action in legal_actions[2]:
             legal_id = ACTION_SPACE[card_legal_action]
             legal_ids += [legal_id]
+        print("legal_ids: ", legal_ids)
         return legal_ids

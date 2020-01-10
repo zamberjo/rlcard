@@ -1,10 +1,13 @@
 
+import socketio
+import asyncio
+
 from rlcard.games.cotos.card import CotosCard as Card
 from rlcard.games.cotos.utils import cards2list
 
 SERVER = "http://localhost:8080"
 
-class Player(object):
+class CotosPlayer(object):
     ''' Player stores cards in the player's hand, and can determine the
     actions can be made according to the rules
     '''
@@ -24,6 +27,7 @@ class Player(object):
         self.name = name
         self.id = _id
         self.payoff = 0
+        self.sio = socketio.Client()
         self.define_events()
     
     def connect(self):
@@ -44,7 +48,7 @@ class Player(object):
             return
         self.hand = []
         for card_data in cards_data:
-            self.hand.push(Card(card_data.get("id")))
+            self.hand += [Card(card_data.get("id"))]
 
     def add_payoff(self, score):
         self.payoff += (score * 100) / 54 
@@ -63,7 +67,7 @@ class Player(object):
         return bool(len(cards) == 2)
 
     def check_sing(self):
-        suits_can_sing = False
+        suits_can_sing = []
         if self.game.check_last_turn_winned(self.team):
             hand_suits = list(
                 set(map(lambda c: c.suit, self.hand)))
