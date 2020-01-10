@@ -10,23 +10,23 @@ from rlcard.games.cotos.card import CotosCard
 
 class CotosEnv(Env):
 
-    def __init__(self, allow_step_back=False):
-        super().__init__(Game(allow_step_back), allow_step_back)
+    def __init__(self):
         # TODO: Esto hay que ver que es ya que es de tensorflow.
-        self.state_shape = [7, 4, 15]
+        super().__init__(Game(), False)
+        self.state_shape = [7, 4, 10]
 
     def print_state(self, player):
         ''' Print out the state of a given player
 
         Args:
-            player (int): Player id
+            player (int): Player object
         '''
         state = self.game.get_state(player)
         print('\n=============== Your Hand ===============')
         CotosCard.print_cards(state['hand'])
         print('')
-        print('=============== Last Card ===============')
-        CotosCard.print_cards(state['target'], wild_color=True)
+        print('=============== table ===============')
+        CotosCard.print_cards(state['table'], wild_color=True)
         print('')
         print('========== Agents Card Number ===========')
         for i in range(self.player_num):
@@ -35,8 +35,12 @@ class CotosEnv(Env):
                     i, len(self.game.players[i].hand)))
         print('======== Actions You Can Choose =========')
         for i, action in enumerate(state['legal_actions']):
-            print(str(ACTION_SPACE[action])+': ', end='')
-            CotosCard.print_cards(action, wild_color=True)
+            if i == 0:
+                print("Suits can sing: {}".format(action))
+            elif i == 1:
+                print("Can change seven: {}".format(action))
+            elif i == 2:
+                CotosCard.print_cards(action, wild_color=True)
             if i < len(state['legal_actions']) - 1:
                 print(', ', end='')
         print('\n')
@@ -73,10 +77,10 @@ class CotosEnv(Env):
         return models.load('cotos-rule-v1')
 
     def extract_state(self, state):
-        obs = np.zeros((7, 4, 15), dtype=int)
+        obs = np.zeros((7, 4, 10), dtype=int)
         encode_hand(obs[:3], state['hand'])
-        encode_target(obs[3], state['target'])
-        encode_hand(obs[4:], state['others_hand'])
+        encode_target(obs[3], state['trump'])
+        encode_hand(obs[4:], state['table'])
         legal_action_id = self.get_legal_actions()
         extrated_state = {'obs': obs, 'legal_actions': legal_action_id}
         return extrated_state
@@ -89,11 +93,18 @@ class CotosEnv(Env):
         legal_ids = self.get_legal_actions()
         if action_id in legal_ids:
             return ACTION_LIST[action_id]
-        #if (len(self.game.dealer.deck) + len(self.game.round.played_cards)) > 17:
-        #    return ACTION_LIST[60]
         return ACTION_LIST[np.random.choice(legal_ids)]
 
     def get_legal_actions(self):
         legal_actions = self.game.get_legal_actions()
-        legal_ids = [ACTION_SPACE[action] for action in legal_actions]
+        legal_ids = []
+        for suit_can_sing in legal_actions[0]:
+            legal_id = ACTION_SPACE["sing_{}".format(suit_can_sing)]
+            legal_ids += [legal_id]
+        if legal_actions[1]:
+            legal_id = ACTION_SPACE["change_seven"]
+            legal_ids += [legal_id]
+        for card_legal_action in legal_actions[2]:
+            legal_id = ACTION_SPACE[card_legal_action]
+            legal_ids += [legal_id]
         return legal_ids

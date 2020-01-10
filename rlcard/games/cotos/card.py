@@ -1,4 +1,6 @@
 
+from termcolor import colored
+
 CARDS = {
     1: 'O1', 2: 'O2', 3: 'O3', 4: 'O4', 5: 'O5', 6: 'O6', 7: 'O7', 8: 'OS',
     9: 'OC', 10: 'OK', 11: 'C1', 12: 'C2', 13: 'C3', 14: 'C4', 15: 'C5',
@@ -51,4 +53,31 @@ class Card(object):
             (str): The string of card's suit and number
         '''
         return self.card
+
+    @staticmethod
+    def print_cards(cards, wild_color=False):
+        ''' Print out card in a nice form
+
+        Args:
+            card (str or list): The string form or a list of a UNO card
+            wild_color (boolean): True if assign collor to wild cards
+        '''
+        if isinstance(cards, str):
+            cards = [cards]
+
+        for i, card in enumerate(cards):
+            suit = card[0]
+            number = card[1]
+            
+            if suit == 'O':
+                print(colored(number, 'yellow'), end='')
+            elif suit == 'C':
+                print(colored(number, 'red'), end='')
+            elif suit == 'E':
+                print(colored(number, 'blue'), end='')
+            elif suit == 'B':
+                print(colored(number, 'green'), end='')
+
+            if i < len(cards) - 1:
+                print(', ', end='')
     

@@ -37,3 +37,8 @@ register(
     env_id='mahjong',
     entry_point='rlcard.envs.mahjong:MahjongEnv',
 )
+
+register(
+    env_id='cotos',
+    entry_point='rlcard.envs.cotos:CotosEnv',
+)
