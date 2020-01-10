@@ -21,6 +21,7 @@ class Player():
     winner_team = False
     team1_score = 0
     team2_score = 0
+    sing_suits = []
 
     def __init__(self, name, debug=False):
         self.name = name
@@ -28,6 +29,7 @@ class Player():
         self.table = [None, None, None, None]
         self.deck = []
         self.sio = socketio.Client()
+        self.last_turn_winner = -1
         self.define_events()
 
     def connect(self):
@@ -77,31 +79,46 @@ class Player():
         return trusted
 
     def check_last_turn_winned(self):
-        # TODO: Hacer esto!
-        return True
+        return self.last_turn_winner == self.team
 
-    def check_sing_fourty(self):
-        can_sing = False
+    def check_sing_suit(self, suit):
+        can_sing = []
         if self.check_last_turn_winned():
             cards = list(filter(
-                lambda c: c.get("number") in ('K', 'S'),
-                self.hand))
-                # TODO: ACABAR ESTO!
-            can_sing = True
-        return can_sing
+                lambda c: (
+                    c.get("number") in ('K', 'S') and
+                    c.get("suit") == suit and
+                    suit not in self.sing_suits
+                ), self.hand))
+        return bool(len(cards) == 2)
 
-    def check_sing_twenty(self):
-        can_sing = False
+    def check_sing(self):
+        suits_can_sing = False
         if self.check_last_turn_winned():
-            cards = list(filter(
-                lambda c: c.get("number") in ('K', 'S'),
-                self.hand))
-            can_sing = True
-        return can_sing
+            hand_suits = list(
+                set(map(lambda c: c.get("suit"), self.hand)))
+            suits_can_sing = list(
+                filter(self.check_sing_suit, hand_suits))
+        return suits_can_sing
+
+    def check_change(self):
+        check_seven = False
+        if self.check_last_turn_winned():
+            check_seven = bool(len(list(filter(
+                lambda c: (
+                    c.get("suit") == self.trump.get("suit") and
+                    c.get("number") == "7") and
+                    self.get_card_turn_value(
+                        c, c.get("suit")) < self.get_card_turn_value(
+                        self.trump, self.trump.get("suit")),
+                self.hand))) > 0)
+        return check_seven
 
     def get_legal_actions(self):
+        suits_sing = self.check_sing()
+        change_seven = self.check_change()
         if not self.lastcards_mode:
-            return self.hand
+            return suits_sing, change_seven, self.hand
         for index in range(1, 4):
             player_index = (self.index + index) % 4
             card = self.table[player_index]
@@ -110,7 +127,7 @@ class Player():
             first_card = card
             break
         else:
-            return self.hand
+            return suits_sing, change_seven, self.hand
         availables_cards = []
         cards_same_suit = list(filter(
             lambda c: c.get("suit") == first_card.get("suit"), self.hand))
@@ -133,9 +150,9 @@ class Player():
             cards_trump = list(filter(
                 lambda c: c.get("suit") == self.trump.get("suit"), self.hand))
             if not cards_trump:
-                return self.hand
+                return suits_sing, change_seven, self.hand
             if self.check_trusted():
-                return self.hand
+                return suits_sing, change_seven, self.hand
             for card in cards_trump:
                 card_value = self.get_card_turn_value(
                     card, first_card.get("suit"))
@@ -150,9 +167,7 @@ class Player():
                     availables_cards += [card]
             if not availables_cards:
                 availables_cards = cards_trump
-        sing_fourty = self.check_sing_fourty()
-        sing_twenty = self.check_sing_twenty()
-        return list(availables_cards)
+        return suits_sing, change_seven, list(availables_cards)
 
     def get_card_turn_value(self, card, turn_suit):
         value = 0
@@ -188,22 +203,33 @@ class Player():
 
     def play_card(self):
         try:
-            cards_legal_actions = self.get_legal_actions()
-            if not cards_legal_actions:
+            suits_sing, change_seven, cards_legal_actions = \
+                self.get_legal_actions()
+            if change_seven:
+                self.emit("doChangeSevenTrump", {})
+                self.is_turn = False
                 time.sleep(1)
-                return
-            card_index = randrange(len(cards_legal_actions))
-            card = cards_legal_actions[card_index]
-            # if self.lastcards_mode:
-            #     print("\tTrump: {}".format(self.print_card(self.trump)))
-            #     print("\tTable: {}".format(self.serialize_table()))
-            #     print("\tHand: {}".format(self.serialize().get("hand")))
-            #     print("\tLegal: {}".format([
-            #         self.print_card(c) for c in cards_legal_actions]))
-            #     print("\tCard: {}".format(self.print_card(card)))
-            #     print("")
-            self.emit("playCard", {"card": card})
-            self.is_turn = False
+            elif suits_sing:
+                for suit in suits_sing:
+                    self.emit("doSing", {"suit": suit})
+                self.is_turn = False
+                time.sleep(1)
+            else:
+                if not cards_legal_actions:
+                    time.sleep(1)
+                    return
+                card_index = randrange(len(cards_legal_actions))
+                card = cards_legal_actions[card_index]
+                # if self.lastcards_mode:
+                #     print("\tTrump: {}".format(self.print_card(self.trump)))
+                #     print("\tTable: {}".format(self.serialize_table()))
+                #     print("\tHand: {}".format(self.serialize().get("hand")))
+                #     print("\tLegal: {}".format([
+                #         self.print_card(c) for c in cards_legal_actions]))
+                #     print("\tCard: {}".format(self.print_card(card)))
+                #     print("")
+                self.emit("playCard", {"card": card})
+                self.is_turn = False
         except Exception as e:
             print("ERROR: {}".format(e))
             print(f"card_index: {card_index}")
@@ -276,6 +302,32 @@ class Player():
         def set_trump(data):
             self.trump = data.get("trump")
 
+        @sio.on('trumpChanged')
+        def trumpChanged(data):
+            if data.get("error"):
+                return
+            if self.index == data.get("playerIndex"):
+                sio.emit("getHand", {})
+                self.is_turn = False
+                time.sleep(2)
+            if data.get("newTrump"):
+                if self.debug:
+                    print("Nuevo triunfo: {} -> {}".format(
+                        self.print_card(self.trump),
+                        self.print_card(data.get("newTrump"))))
+                self.trump = data.get("newTrump")
+
+        @sio.on('singed')
+        def singed(data):
+            if data.get("suit"):
+                self.sing_suits += [data.get("suit")]
+            if data.get("playerIndex") == self.index:
+                score = data.get("scoreAdded")
+                # TODO: Que hacer con el payload!!
+                payload = (score * 100) / 54
+                if self.debug:
+                    print("Canto {} y me llevo {}!".format(score, payload))
+
         @sio.on('playedCard')
         def played_card(data):
             player_index = data.get("playerIndex")
@@ -290,6 +342,7 @@ class Player():
             self.table[player_index] = card
             self.deck += [card]
             if data.get("endTurn"):
+                self.last_turn_winner = data.get("turnTeamWinner")
                 if self.debug:
                     # TODO: Que hacer con el payload!!
                     payload = self.get_payload(data)
@@ -307,6 +360,7 @@ class Player():
                 sio.emit("getTrump", {})
                 sio.emit("getHand", {})
                 sio.emit("getNextTurnPlayer", {})
+                self.sing_suits = []
             else:
                 self.winner_team = "team1"
                 self.team1_score = data.get("team1")
@@ -314,7 +368,7 @@ class Player():
                 if data.get("team1") < data.get("team2"):
                     self.winner_team = "team2"
                 sio.disconnect()
-            
+        
 
 while True:
     game_start_time = time.time()

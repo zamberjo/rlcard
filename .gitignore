@@ -17,3 +17,5 @@ experiments/
 newtest/
 dist/
 cfr_model/
+
+.venv

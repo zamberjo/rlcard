@@ -12,7 +12,7 @@ CARDS = {
 
 
 
-class Card(object):
+class CotosCard(object):
     '''
     Card stores the suit and rank of a single card
     Note:

@@ -91,6 +91,14 @@ class CotosGame(object):
         state['legal_actions'] = player.get_legal_actions(self.table)
         return state
 
+    def get_payoffs(self):
+        ''' Return the payoffs of the game
+
+        Returns:
+            (list): Each entry corresponds to the payoff of one player
+        '''
+        return self.payoffs
+
     def step(self, action):
         ''' Perform one draw of the game and return next player number, and the state for next player
         '''

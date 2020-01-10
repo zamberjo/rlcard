@@ -86,7 +86,6 @@ class CotosEnv(Env):
         return extrated_state
 
     def get_payoffs(self):
-
         return self.game.get_payoffs()
 
     def decode_action(self, action_id):
