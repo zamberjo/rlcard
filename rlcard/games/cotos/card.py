@@ -53,6 +53,14 @@ class CotosCard(object):
             (str): The string of card's suit and number
         '''
         return self.card
+    
+    def serializer(self):
+        return {
+            'id': self.id,
+            'name': self.card,
+            'suit': self.suit,
+            'number': self.number,
+        }
 
     @staticmethod
     def print_cards(cards, wild_color=False):

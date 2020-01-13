@@ -3,6 +3,7 @@ import socketio
 import asyncio
 
 from rlcard.games.cotos.card import CotosCard as Card
+from rlcard.games.cotos.utils import CARDS
 from rlcard.games.cotos.utils import cards2list
 
 SERVER = "http://localhost:8080"
@@ -176,6 +177,27 @@ class CotosPlayer(object):
                 self.hand))) > 0)
         return check_seven
 
+    def get_next_turn_player(self):
+        self.emit("getNextTurnPlayer", {})
+
+    def sing(self, suit):
+        ''' TODO: await '''
+        self.emit("doSing", {"suit": suit})
+        self.is_turn = False
+
+    def change_seven(self):
+        ''' TODO: await '''
+        self.emit("doChangeSevenTrump", {})
+        self.is_turn = False
+    
+    def play_card(self, card_name):
+        card_index = filter(lambda i, c: c == card_name, CARDS.items())
+        if not card_index:
+            raise NotImplementedError
+        card = Card(card_index)
+        self.emit("playCard", {"card": card.serializer()})
+        self.is_turn = False
+
     def define_events(self):
         sio = self.sio
 
@@ -263,6 +285,7 @@ class CotosPlayer(object):
                 sio.emit("getNextTurnPlayer", {})
                 self.game.reset()
             else:
+                self.game.over = True
                 self.winner_team = "team1"
                 self.team1_score = data.get("team1")
                 self.team2_score = data.get("team2")

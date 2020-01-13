@@ -16,6 +16,7 @@ class CotosGame(object):
     last_turn_winner = None
     winner_team = None
     sing_suits = []
+    over = False
 
     def __init__(self, allow_step_back=False):
         self.allow_step_back = allow_step_back
@@ -35,14 +36,20 @@ class CotosGame(object):
             player.enter_game()
             self.players += [player]
 
+        player_turn = self.get_next_player_turn()
+        state = self.get_state(player_turn)
+        return state, player_turn.index
+
+    def get_next_player_turn(self):
         while True:
             players_turn = list(filter(lambda p: p.is_turn, self.players))
             if players_turn:
                 players_turn = players_turn[0]
                 break
+            for player in self.players:
+                player.get_next_turn_player()
             time.sleep(1)
-        state = self.get_state(players_turn)
-        return state, players_turn.id
+        return players_turn
 
     def set_trump(self, card):
         ''' Establecemos el triunfo de la partida.
@@ -120,9 +127,20 @@ class CotosGame(object):
         return len(ACTION_LIST)
 
     def step(self, action):
-        ''' Perform one draw of the game and return next player number, and the state for next player
+        ''' Perform one draw of the game and return next player number, and the
+        state for next player
         '''
-        raise NotImplementedError
+        player = self.get_next_player_turn()
+        print("Player {}: action -> {}".format(player.index, action))
+        if "sing_" in action:
+            suit = action[-1]
+            player.sing(suit)
+            return None
+        if action == "change_seven":
+            player.change_seven()
+            return None
+        player.play_card(action)
+        
 
     def step_back(self):
         ''' Takes one step backward and restore to the last state
@@ -136,5 +154,7 @@ class CotosGame(object):
 
     def is_over(self):
         ''' Return whether the current game is over
+
+        TODO: No dependar de la llamada, sino comprobar los score de los team
         '''
-        raise NotImplementedError
+        return self.over
