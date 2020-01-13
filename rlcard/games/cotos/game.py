@@ -14,6 +14,7 @@ class CotosGame(object):
     last_turn_winner = None
     winner_team = None
     sing_suits = []
+    players = []
     over = False
 
     def __init__(self, allow_step_back=False):
