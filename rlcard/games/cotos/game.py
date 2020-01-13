@@ -4,14 +4,12 @@ from rlcard.games.cotos.player import CotosPlayer as Player
 from rlcard.games.cotos.utils import ACTION_LIST
 from rlcard.games.cotos.utils import cards2list
 
+
 class CotosGame(object):
     ''' Cotos game class. This class will interact with outer environment.
     '''
     trump = None
-    dealer = None
     payoffs = []
-    players = []
-    table = []
     lastcards_mode = False
     last_turn_winner = None
     winner_team = None
@@ -23,6 +21,8 @@ class CotosGame(object):
         self.num_players = 4
         # 2 payoffs, 1 by team
         self.payoffs = [0 for _ in range(self.num_players)]
+        self.table = [None for _ in range(self.num_players)]
+        self.turn_number = 0
 
     def init_game(self):
         ''' Initialize players in the game and start round 1
@@ -74,7 +74,9 @@ class CotosGame(object):
             self.payoffs[index] = player.payoff
             player.reset_payoff()
         # TODO: Reseteamos la mesa ya?
-        self.table = [None, None, None, None]
+        self.payoffs = [0 for _ in range(self.num_players)]
+        self.table = [None for _ in range(self.num_players)]
+        self.turn_number += 1
 
     def set_lastcards_mode(self, mode):
         ''' Establece el modo últimas cartas.
@@ -83,11 +85,18 @@ class CotosGame(object):
 
     def reset(self):
         self.sing_suits = []
-    
+        self.turn_number = 0
+        self.set_lastcards_mode(False)
+        self.trump = None
+        self.payoffs = [0 for _ in range(self.num_players)]
+        self.winner_team = None
+        self.sing_suits = []
+        self.over = False
+
     def end_game(self, team):
         ''' Establecemos el fin del juego.
         '''
-        pass
+        self.over = True
 
     def check_last_turn_winned(self, team):
         return self.last_turn_winner == team
@@ -114,6 +123,7 @@ class CotosGame(object):
         Returns:
             (list): Each entry corresponds to the payoff of one player
         '''
+        print("PAYOFFS = {}".format(self.payoffs))
         return self.payoffs
 
     def get_player_num(self):
@@ -130,6 +140,7 @@ class CotosGame(object):
         ''' Perform one draw of the game and return next player number, and the
         state for next player
         '''
+        turn_number = self.turn_number
         player = self.get_next_player_turn()
         print("Player {}: action -> {}".format(player.index, action))
         if "sing_" in action:
@@ -140,17 +151,20 @@ class CotosGame(object):
             player.change_seven()
             return None
         player.play_card(action)
-        
 
-    def step_back(self):
-        ''' Takes one step backward and restore to the last state
-        '''
-        raise NotImplementedError
+        # TODO: async
+        while turn_number >= self.turn_number and not self.table[player.index]:
+            time.sleep(1)
+
+        player_turn = self.get_next_player_turn()
+        state = self.get_state(player_turn)
+        return state, player_turn.index
 
     def get_player_id(self):
         ''' Return the current player that will take actions soon
         '''
-        raise NotImplementedError
+        player = self.get_next_player_turn()
+        raise player.index
 
     def is_over(self):
         ''' Return whether the current game is over

@@ -26,8 +26,12 @@ def cards2list(cards):
     '''
     cards_list = []
     for card in cards:
+        if not card:
+            cards_list.append(None)
+            continue
         cards_list.append(card.get_str())
     return cards_list
+
 
 def hand2dict(hand):
     ''' Get the corresponding dict representation of hand
@@ -46,6 +50,7 @@ def hand2dict(hand):
             hand_dict[card] += 1
     return hand_dict
 
+
 def encode_hand(plane, hand):
     ''' Encode hand and represerve it into plane
 
@@ -58,10 +63,13 @@ def encode_hand(plane, hand):
     '''
     plane[0] = np.ones((4, 10), dtype=int)
     for card in hand:
+        if not card:
+            continue
         suit = SUIT_MAP[card[0]]
         number = NUMBER_MAP[card[1]]
-        plane[0][suit][number] = 0
+        plane[0][suit][number] = 1
     return plane
+
 
 def encode_target(plane, card):
     ''' Encode target and represerve it into plane

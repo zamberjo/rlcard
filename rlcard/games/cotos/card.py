@@ -11,7 +11,6 @@ CARDS = {
 }
 
 
-
 class CotosCard(object):
     '''
     Card stores the suit and rank of a single card
@@ -20,7 +19,7 @@ class CotosCard(object):
         Similarly the rank variable should be one of
         [1, 2, 3, 4, 5, 6, 7, S, C, K]
     '''
- 
+
     id = None
     number = None
     suit = None
@@ -53,7 +52,7 @@ class CotosCard(object):
             (str): The string of card's suit and number
         '''
         return self.card
-    
+
     def serializer(self):
         return {
             'id': self.id,
@@ -61,6 +60,27 @@ class CotosCard(object):
             'suit': self.suit,
             'number': self.number,
         }
+
+    def get_card_turn_value(self, suit, trump_suit):
+        value = 0
+        cardsValue = {
+            '1': 10,
+            '3': 9,
+            'K': 8,
+            'S': 7,
+            'C': 6,
+            '7': 5,
+            '6': 4,
+            '5': 3,
+            '4': 2,
+            '2': 1,
+        }
+        if trump_suit == self.suit:
+            value += 20
+        elif suit == self.suit:
+            value += 10
+        value += cardsValue[self.number]
+        return value
 
     @staticmethod
     def print_cards(cards, wild_color=False):
@@ -76,7 +96,7 @@ class CotosCard(object):
         for i, card in enumerate(cards):
             suit = card[0]
             number = card[1]
-            
+
             if suit == 'O':
                 print(colored(number, 'yellow'), end='')
             elif suit == 'C':
@@ -88,4 +108,3 @@ class CotosCard(object):
 
             if i < len(cards) - 1:
                 print(', ', end='')
-    

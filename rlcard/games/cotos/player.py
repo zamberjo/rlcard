@@ -1,12 +1,15 @@
 
-import socketio
-import asyncio
+# import asyncio
 
+
+from rlcard.games.cotos.card import CARDS
 from rlcard.games.cotos.card import CotosCard as Card
-from rlcard.games.cotos.utils import CARDS
 from rlcard.games.cotos.utils import cards2list
 
-SERVER = "http://localhost:8080"
+import socketio
+
+SERVER = "https://cotosgame.es/"
+
 
 class CotosPlayer(object):
     ''' Player stores cards in the player's hand, and can determine the
@@ -30,7 +33,7 @@ class CotosPlayer(object):
         self.payoff = 0
         self.sio = socketio.Client()
         self.define_events()
-    
+
     def connect(self):
         self.sio.connect(SERVER)
 
@@ -52,7 +55,7 @@ class CotosPlayer(object):
             self.hand += [Card(card_data.get("id"))]
 
     def add_payoff(self, score):
-        self.payoff += (score * 100) / 54 
+        self.payoff += (score * 100) / 54
 
     def reset_payoff(self):
         self.payoff = 0
@@ -79,13 +82,14 @@ class CotosPlayer(object):
     def getPlayerIndexWinner(self):
         start_turn_player_index = (self.index + 1) % 4
         card_played = self.game.table[start_turn_player_index]
-        value_card_played = card_played.get_card_turn_value(card_played.suit)
+        value_card_played = card_played.get_card_turn_value(
+            card_played.suit, self.game.trump.suit)
         winner_player_index = start_turn_player_index
         for _ in range(2):
             start_turn_player_index = (start_turn_player_index + 1) % 4
             next_card_played = self.game.table[start_turn_player_index]
             value_next_card_played = next_card_played.get_card_turn_value(
-                card_played.suit)
+                card_played.suit, self.game.trump.suit)
             if value_card_played < value_next_card_played:
                 winner_player_index = start_turn_player_index
         return winner_player_index
@@ -117,26 +121,27 @@ class CotosPlayer(object):
             break
         else:
             return suits_sing, change_seven, cards2list(self.hand)
-        
+
         availables_cards = []
         cards_same_suit = list(filter(
             lambda c: c.suit == first_card.suit, self.hand))
 
         if cards_same_suit:
             for card in cards_same_suit:
-                card_value = card.get_card_turn_value(first_card.suit)
+                card_value = card.get_card_turn_value(
+                    first_card.suit, self.game.trump.suit)
                 for card_played in self.game.table:
                     if not card_played:
                         continue
                     card_played_value = card_played.get_card_turn_value(
-                        first_card.suit)
+                        first_card.suit, self.game.trump.suit)
                     if card_value < card_played_value:
                         break
                 else:
                     availables_cards += [card]
             if not availables_cards:
                 availables_cards = cards_same_suit
-        
+
         else:
             cards_trump = list(filter(
                 lambda c: c.suit == self.game.trump.suit, self.hand))
@@ -148,12 +153,13 @@ class CotosPlayer(object):
                 return suits_sing, change_seven, cards2list(self.hand)
 
             for card in cards_trump:
-                card_value = card.get_card_turn_value(first_card.suit)
+                card_value = card.get_card_turn_value(
+                    first_card.suit, self.game.trump.suit)
                 for card_played in self.game.table:
                     if not card_played:
                         continue
                     card_played_value = card_played.get_card_turn_value(
-                        first_card.suit)
+                        first_card.suit, self.game.trump.suit)
                     if card_value < card_played_value:
                         break
                 else:
@@ -170,10 +176,11 @@ class CotosPlayer(object):
             check_seven = bool(len(list(filter(
                 lambda c: (
                     c.suit == self.game.trump.suit and
-                    c.number == "7") and
+                    c.number == "7" and
                     c.get_card_turn_value(
-                        c.suit) < self.game.trump.get_card_turn_value(
-                            self.game.trump.suit),
+                        c.suit, self.game.trump.suit
+                    ) < self.game.trump.get_card_turn_value(
+                        self.game.trump.suit, self.game.trump.suit)),
                 self.hand))) > 0)
         return check_seven
 
@@ -189,12 +196,13 @@ class CotosPlayer(object):
         ''' TODO: await '''
         self.emit("doChangeSevenTrump", {})
         self.is_turn = False
-    
+
     def play_card(self, card_name):
-        card_index = filter(lambda i, c: c == card_name, CARDS.items())
+        card_index = list(
+            filter(lambda k: CARDS.get(k) == card_name, CARDS))
         if not card_index:
             raise NotImplementedError
-        card = Card(card_index)
+        card = Card(card_index[0])
         self.emit("playCard", {"card": card.serializer()})
         self.is_turn = False
 
@@ -207,7 +215,7 @@ class CotosPlayer(object):
             self.id = player_data.get("id")
             self.name = player_data.get("name")
             self.index = player_data.get("index")
-            # TODO: Crear TEAM
+            # TODO: Crear TEAM
             self.team = player_data.get("team", {}).get("id")
             self.set_hand(player_data.get("hand"))
 
@@ -224,7 +232,7 @@ class CotosPlayer(object):
         @sio.on('setNextTurnPlayer')
         def set_next_turn_player(data):
             self.is_turn = bool(
-                data.get("nextTurnPlayer", {}).get("id") == self.id)
+                data.get("nextTurnPlayer", {}).get("id", False) == self.id)
 
         @sio.on('setTrump')
         def set_trump(data):
@@ -241,7 +249,7 @@ class CotosPlayer(object):
             if data.get("newTrump"):
                 card_trump = Card(data.get("newTrump", {}).get("id"))
                 self.game.set_trump(card_trump)
-        
+
         @sio.on('singed')
         def singed(data):
             if data.get("suit"):
@@ -249,7 +257,7 @@ class CotosPlayer(object):
             if data.get("playerIndex") == self.index:
                 score = data.get("scoreAdded")
                 self.add_payoff(score)
-        
+
         @sio.on('playedCard')
         def played_card(data):
             player_index = data.get("playerIndex")
@@ -279,18 +287,18 @@ class CotosPlayer(object):
         @sio.on('endGame')
         def end_game(data):
             if data.get("deVueltaMode"):
+                self.game.reset()
                 self.is_turn = False
                 sio.emit("getTrump", {})
                 sio.emit("getHand", {})
                 sio.emit("getNextTurnPlayer", {})
-                self.game.reset()
             else:
-                self.game.over = True
                 self.winner_team = "team1"
                 self.team1_score = data.get("team1")
                 self.team2_score = data.get("team2")
                 if data.get("team1") < data.get("team2"):
                     self.winner_team = "team2"
+                self.game.end_game(self.winner_team)
                 sio.disconnect()
 
     def available_order(self):
