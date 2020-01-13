@@ -108,5 +108,4 @@ class CotosEnv(Env):
         for card_legal_action in legal_actions[2]:
             legal_id = ACTION_SPACE[card_legal_action]
             legal_ids += [legal_id]
-        print("legal_ids: ", legal_ids)
         return legal_ids

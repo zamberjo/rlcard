@@ -147,19 +147,28 @@ class CotosGame(object):
         if "sing_" in action:
             suit = action[-1]
             player.sing(suit)
-            return None
-        if action == "change_seven":
+            player_turn = player
+            state = self.get_state(player_turn)
+            import pdb; pdb.set_trace()
+            res = state, player_turn.index
+        elif action == "change_seven":
             player.change_seven()
-            return None
-        player.play_card(action)
+            player_turn = player
+            state = self.get_state(player_turn)
+            import pdb; pdb.set_trace()
+            res = state, player_turn.index
+        else:
+            player.play_card(action)
 
-        # TODO: async
-        while turn_number >= self.turn_number and not self.table[player.index]:
-            time.sleep(1)
+            # TODO: async
+            while turn_number >= self.turn_number and \
+                    not self.table[player.index]:
+                time.sleep(1)
 
-        player_turn = self.get_next_player_turn()
-        state = self.get_state(player_turn)
-        return state, player_turn.index
+            player_turn = self.get_next_player_turn()
+            state = self.get_state(player_turn)
+            res = state, player_turn.index
+        return res
 
     def get_player_id(self):
         ''' Return the current player that will take actions soon

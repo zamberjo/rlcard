@@ -6,9 +6,13 @@ from rlcard.games.cotos.card import CARDS
 from rlcard.games.cotos.card import CotosCard as Card
 from rlcard.games.cotos.utils import cards2list
 
-import socketio
+try:
+    import socketio
+except ImportError:
+    print("pip install python-socketio==4.4.0")
 
-SERVER = "https://cotosgame.es/"
+# SERVER = "https://cotosgame.es/"
+SERVER = "http://localhost:8080"
 
 
 class CotosPlayer(object):
