@@ -149,13 +149,11 @@ class CotosGame(object):
             player.sing(suit)
             player_turn = player
             state = self.get_state(player_turn)
-            import pdb; pdb.set_trace()
             res = state, player_turn.index
         elif action == "change_seven":
             player.change_seven()
             player_turn = player
             state = self.get_state(player_turn)
-            import pdb; pdb.set_trace()
             res = state, player_turn.index
         else:
             player.play_card(action)
@@ -181,4 +179,7 @@ class CotosGame(object):
 
         TODO: No dependar de la llamada, sino comprobar los score de los team
         '''
+        if self.over:
+            for player in self.players:
+                player.sio.disconnect()
         return self.over

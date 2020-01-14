@@ -12,7 +12,7 @@ except ImportError:
     print("pip install python-socketio==4.4.0")
 
 # SERVER = "https://cotosgame.es/"
-SERVER = "http://localhost:8080"
+SERVER = "http://localhost:9999"
 
 
 class CotosPlayer(object):
@@ -303,7 +303,6 @@ class CotosPlayer(object):
                 if data.get("team1") < data.get("team2"):
                     self.winner_team = "team2"
                 self.game.end_game(self.winner_team)
-                sio.disconnect()
 
     def available_order(self):
         ''' Get the actions can be made based on the rules
