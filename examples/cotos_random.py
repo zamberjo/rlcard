@@ -7,7 +7,7 @@ from rlcard.utils.utils import set_global_seed
 
 # Make environment
 env = rlcard.make('cotos')
-episode_num = 2
+episode_num = 1000
 
 # Set a global seed
 set_global_seed(0)
@@ -20,13 +20,16 @@ agent_3 = RandomAgent(action_num=env.action_num)
 env.set_agents([agent_0, agent_1, agent_2, agent_3])
 
 for episode in range(episode_num):
-
+    print("#" * 50)
+    print("EPISODE: ", episode)
     # Generate data from the environment
     trajectories, _ = env.run(is_training=False)
 
     # Print out the trajectories
-    print('\nEpisode {}'.format(episode))
+    # for ts in trajectories[0]:
+    #     print('State: {}, Action: {}, Reward: {}, Next State: {}, Done: {}'.format(
+    #         ts[0], ts[1], ts[2], ts[3], ts[4]))
     for ts in trajectories[0]:
-        print('State: {}, Action: {}, Reward: {}, Next State: {}, Done: {}'.format(
-            ts[0], ts[1], ts[2], ts[3], ts[4]))
-    env.game.init_game()
+        print('Action: {}, Reward: {}'.format(ts[1], ts[2]))
+
+    print("END EPISODE")

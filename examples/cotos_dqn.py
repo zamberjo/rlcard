@@ -33,7 +33,7 @@ figure_path = root_path + 'figures/'
 # Set a global seed
 set_global_seed(0)
 
-with tf.Session() as sess:
+with tf.compat.v1.Session() as sess:
     # Set agents
     global_step = tf.Variable(0, name='global_step', trainable=False)
     agent = DQNAgent(sess,
@@ -47,7 +47,7 @@ with tf.Session() as sess:
 
     random_agent = RandomAgent(action_num=eval_env.action_num)
 
-    sess.run(tf.global_variables_initializer())
+    sess.run(tf.compat.v1.global_variables_initializer())
 
     env.set_agents([agent, random_agent, random_agent, random_agent])
     eval_env.set_agents([agent, random_agent, random_agent, random_agent])
@@ -61,9 +61,11 @@ with tf.Session() as sess:
         log_path=log_path, csv_path=csv_path)
 
     for episode in range(episode_num):
-
+        print("#" * 50)
+        print("EPISODE: ", episode)
         # Generate data from the environment
         trajectories, _ = env.run(is_training=True)
+        import pdb; pdb.set_trace()
 
         # Feed transitions into agent memory, and train the agent
         for ts in trajectories[0]:
@@ -94,8 +96,6 @@ with tf.Session() as sess:
         # Make plot
         if episode % save_plot_every == 0 and episode > 0:
             logger.make_plot(save_path=figure_path+str(episode)+'.png')
-
-        env.game.init_game()
 
     # Make the final plot
     logger.make_plot(save_path=figure_path+'final_'+str(episode)+'.png')

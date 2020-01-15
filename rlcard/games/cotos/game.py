@@ -48,7 +48,7 @@ class CotosGame(object):
             player.enter_game()
             self.players += [player]
 
-        # Wait unitl game not started
+        # Wait unitl game not started
         while True:
             if self.started:
                 break
@@ -92,7 +92,7 @@ class CotosGame(object):
             self.payoffs[index] += player.payoff
             # player.reset_payoff()
         # TODO: Reseteamos la mesa ya?
-        # self.payoffs = [0 for _ in range(self.num_players)]
+        # self.payoffs = [0 for _ in range(self.num_players)]
         self.table = [None for _ in range(self.num_players)]
         self.turn_number += 1
 
@@ -104,6 +104,7 @@ class CotosGame(object):
         self.lastcards_mode = mode
 
     def reset(self):
+        print("De vuelta!")
         self.sing_suits = []
         self.turn_number = 0
         self.set_lastcards_mode(False)
@@ -170,7 +171,6 @@ class CotosGame(object):
             player.sing(suit)
             player_turn = player
             state = self.get_state(player_turn)
-            import pdb; pdb.set_trace()
             res = state, player_turn.index
         elif action == "change_seven":
             player.change_seven()

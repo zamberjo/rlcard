@@ -81,7 +81,8 @@ class CotosEnv(Env):
         encode_hand(obs[:3], state['hand'])
         encode_target(obs[3], state['trump'])
         encode_hand(obs[4:], state['table'])
-        legal_action_id = self.get_legal_actions()
+        legal_action_id = self.get_legal_actions(
+            state['legal_actions'])
         extrated_state = {'obs': obs, 'legal_actions': legal_action_id}
         return extrated_state
 
@@ -89,14 +90,15 @@ class CotosEnv(Env):
         return self.game.get_payoffs()
 
     def decode_action(self, action_id):
-        legal_ids = self.get_legal_actions()
-        if action_id in legal_ids:
+        if action_id:
             return ACTION_LIST[action_id]
+        legal_ids = self.get_legal_actions()
         return ACTION_LIST[np.random.choice(legal_ids)]
 
-    def get_legal_actions(self):
-        legal_actions = self.game.get_legal_actions()
+    def get_legal_actions(self, legal_actions=None):
         legal_ids = []
+        if not legal_actions:
+            legal_actions = self.game.get_legal_actions()
         if not legal_actions:
             return legal_ids
         for suit_can_sing in legal_actions[0]:
