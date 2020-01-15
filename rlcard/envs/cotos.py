@@ -1,17 +1,17 @@
 import numpy as np
 
-from rlcard.envs.env import Env
 from rlcard import models
-from rlcard.games.cotos.game import CotosGame as Game
-from rlcard.games.cotos.utils import encode_hand, encode_target
-from rlcard.games.cotos.utils import ACTION_SPACE, ACTION_LIST
+from rlcard.envs.env import Env
 from rlcard.games.cotos.card import CotosCard
+from rlcard.games.cotos.game import CotosGame as Game
+from rlcard.games.cotos.utils import ACTION_LIST, ACTION_SPACE
+from rlcard.games.cotos.utils import encode_hand, encode_target
 
 
 class CotosEnv(Env):
 
     def __init__(self, allow_step_back=False):
-        # TODO: Esto hay que ver que es ya que es de tensorflow.
+        # TODO: Esto hay que ver que es ya que es de tensorflow.
         super().__init__(Game(allow_step_back), allow_step_back)
         self.state_shape = [7, 4, 10]
 
