@@ -16,11 +16,11 @@ class CotosGame(object):
     sing_suits = []
     players = []
     over = False
+    started = False
 
     def __init__(self, allow_step_back=False):
         self.allow_step_back = allow_step_back
         self.num_players = 4
-        # 2 payoffs, 1 by team
         self.payoffs = [0 for _ in range(self.num_players)]
         self.table = [None for _ in range(self.num_players)]
         self.turn_number = 0
@@ -28,6 +28,17 @@ class CotosGame(object):
     def init_game(self):
         ''' Initialize players in the game and start round 1
         '''
+        self.trump = None
+        self.lastcards_mode = False
+        self.last_turn_winner = None
+        self.winner_team = None
+        self.sing_suits = []
+        self.over = False
+        self.started = False
+        self.payoffs = [0 for _ in range(self.num_players)]
+        self.table = [None for _ in range(self.num_players)]
+        self.turn_number = 0
+
         # Initalize payoffs
         self.payoffs = [0 for _ in range(self.num_players)]
 
@@ -36,6 +47,12 @@ class CotosGame(object):
             player = Player(self, playerIndex, "Player {}".format(playerIndex))
             player.enter_game()
             self.players += [player]
+
+        # Wait unitl game not started
+        while True:
+            if self.started:
+                break
+            time.sleep(1)
 
         player_turn = self.get_next_player_turn()
         state = self.get_state(player_turn)
@@ -72,16 +89,18 @@ class CotosGame(object):
         '''
         self.last_turn_winner = team
         for index, player in enumerate(self.players):
-            self.payoffs[index] = player.payoff
-            player.reset_payoff()
+            self.payoffs[index] += player.payoff
+            # player.reset_payoff()
         # TODO: Reseteamos la mesa ya?
-        self.payoffs = [0 for _ in range(self.num_players)]
+        # self.payoffs = [0 for _ in range(self.num_players)]
         self.table = [None for _ in range(self.num_players)]
         self.turn_number += 1
 
     def set_lastcards_mode(self, mode):
         ''' Establece el modo últimas cartas.
         '''
+        if self.lastcards_mode != mode:
+            print("[set_lastcards_mode] {}".format(mode))
         self.lastcards_mode = mode
 
     def reset(self):
@@ -89,7 +108,7 @@ class CotosGame(object):
         self.turn_number = 0
         self.set_lastcards_mode(False)
         self.trump = None
-        self.payoffs = [0 for _ in range(self.num_players)]
+        # self.payoffs = [0 for _ in range(self.num_players)]
         self.winner_team = None
         self.sing_suits = []
         self.over = False
@@ -105,6 +124,8 @@ class CotosGame(object):
     def get_state(self, player):
         ''' Devolvemos el estado de un jugador.
         '''
+        if isinstance(player, int):
+            player = self.players[player]
         state = {}
         state['hand'] = cards2list(player.hand)
         state['trump'] = self.trump.get_str()
@@ -149,11 +170,13 @@ class CotosGame(object):
             player.sing(suit)
             player_turn = player
             state = self.get_state(player_turn)
+            import pdb; pdb.set_trace()
             res = state, player_turn.index
         elif action == "change_seven":
             player.change_seven()
             player_turn = player
             state = self.get_state(player_turn)
+            import pdb; pdb.set_trace()
             res = state, player_turn.index
         else:
             player.play_card(action)

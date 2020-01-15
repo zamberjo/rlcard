@@ -49,8 +49,8 @@ with tf.Session() as sess:
 
     sess.run(tf.global_variables_initializer())
 
-    env.set_agents([agent, random_agent, random_agent])
-    eval_env.set_agents([agent, random_agent, random_agent])
+    env.set_agents([agent, random_agent, random_agent, random_agent])
+    eval_env.set_agents([agent, random_agent, random_agent, random_agent])
 
     # Count the number of steps
     step_counter = 0
@@ -94,6 +94,8 @@ with tf.Session() as sess:
         # Make plot
         if episode % save_plot_every == 0 and episode > 0:
             logger.make_plot(save_path=figure_path+str(episode)+'.png')
+
+        env.game.init_game()
 
     # Make the final plot
     logger.make_plot(save_path=figure_path+'final_'+str(episode)+'.png')

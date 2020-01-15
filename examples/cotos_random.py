@@ -29,3 +29,4 @@ for episode in range(episode_num):
     for ts in trajectories[0]:
         print('State: {}, Action: {}, Reward: {}, Next State: {}, Done: {}'.format(
             ts[0], ts[1], ts[2], ts[3], ts[4]))
+    env.game.init_game()

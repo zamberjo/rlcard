@@ -228,6 +228,7 @@ class CotosPlayer(object):
             sio.emit("getHand", {})
             sio.emit("getNextTurnPlayer", {})
             sio.emit("getTrump", {})
+            self.game.started = True
 
         @sio.on('setHand')
         def set_hand(data):
