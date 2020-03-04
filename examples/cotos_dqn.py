@@ -32,10 +32,7 @@ def create_game(env):
 
 # Make environment
 env = rlcard.make('cotos')
-# if len(sys.argv)
-create_game(env)
 eval_env = rlcard.make('cotos')
-create_game(eval_env)
 
 # Set the iterations numbers and how frequently we evaluate/save plot
 evaluate_every = 100
@@ -90,7 +87,8 @@ with tf.compat.v1.Session() as sess:
         print("#" * 50)
         print("EPISODE: ", episode)
         # Generate data from the environment
-        import pdb; pdb.set_trace()
+        create_game(env)
+        time.sleep(5)
         trajectories, _ = env.run(is_training=True)
 
         # Feed transitions into agent memory, and train the agent
@@ -108,6 +106,8 @@ with tf.compat.v1.Session() as sess:
         if episode % evaluate_every == 0:
             reward = 0
             for eval_episode in range(evaluate_num):
+                create_game(eval_env)
+                time.sleep(5)
                 _, payoffs = eval_env.run(is_training=False)
                 reward += payoffs[0]
 
