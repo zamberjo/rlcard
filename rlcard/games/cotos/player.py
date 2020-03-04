@@ -37,14 +37,15 @@ class CotosPlayer(object):
         self.payoff = 0
         self.sio = socketio.Client()
         self.define_events()
+        self.connect()
         self.server_game_id = server_game_id
 
-    def connect(self):
-        self.sio.connect(SERVER)
+    def connect(self, options={}):
+        self.sio.connect(SERVER, options)
 
     def emit(self, event, params=None):
         if not self.sio.sid:
-            self.connect()
+            self.connect({'force new connection': true})
         if not params:
             params = {}
         return self.sio.emit(event, params)
