@@ -28,6 +28,7 @@ def create_game(env):
         env.set_game_id(data['gameId'])
 
     sio.emit('createNewGame', {'type': 1111})
+    env.sio = sio
 
 
 # Make environment
@@ -90,6 +91,7 @@ with tf.compat.v1.Session() as sess:
         create_game(env)
         time.sleep(5)
         trajectories, _ = env.run(is_training=True)
+        env.sio.disconnect()
 
         # Feed transitions into agent memory, and train the agent
         for ts in trajectories[0]:
@@ -109,6 +111,8 @@ with tf.compat.v1.Session() as sess:
                 create_game(eval_env)
                 time.sleep(5)
                 _, payoffs = eval_env.run(is_training=False)
+                time.sleep(5)
+                eval_env.sio.disconnect()
                 reward += payoffs[0]
 
             logger.log('\n########## Evaluation ##########')

@@ -31,28 +31,28 @@ class CotosPlayer(object):
     def __init__(self, game, _id, name, server_game_id):
         ''' Every player should have a unique player id
         '''
+        print("[PLAYER][__init__] {} {}".format(
+            name, server_game_id))
         self.game = game
         self.name = name
         self.id = _id
         self.payoff = 0
         self.sio = socketio.Client()
         self.define_events()
-        self.connected = False
-        self.connect()
+        self.sio_sid = None
+        # self.connect()
         self.server_game_id = server_game_id
 
     def connect(self):
-        options = {}
-        if self.connected:
-            options = {'force new connection': true}
+        print("[PLAYER][connect]")
         self.sio.connect(SERVER)
-        self.connected = True
+        if self.sio_sid:
+            self.sio.sid = self.sio_sid
 
     def emit(self, event, params=None):
         if not self.sio.sid:
             self.connect()
-            print("{} se conecta y obtiene el id {}".format(
-                self.name, self.sio.sid))
+            self.sio_sid = self.sio.sid
         if not params:
             params = {}
         return self.sio.emit(event, params)
@@ -323,6 +323,8 @@ class CotosPlayer(object):
                     self.winner_team = "team2"
                 print("Finaliza la partida!")
                 self.game.end_game(self.winner_team)
+                self.sio.disconnect()
+                time.sleep(5)
 
     def available_order(self):
         ''' Get the actions can be made based on the rules

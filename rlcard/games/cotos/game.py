@@ -18,8 +18,10 @@ class CotosGame(object):
     over = False
     started = False
     deVueltaMode = False
+    server_game_id = False
 
     def __init__(self, allow_step_back=False):
+        print("[GAME][__init__]")
         self.allow_step_back = allow_step_back
         self.num_players = 4
         self.payoffs = [0 for _ in range(self.num_players)]
@@ -29,6 +31,7 @@ class CotosGame(object):
     def init_game(self):
         ''' Initialize players in the game and start round 1
         '''
+        print("[GAME][init_game]")
         self.trump = None
         self.lastcards_mode = False
         self.last_turn_winner = None
@@ -63,8 +66,8 @@ class CotosGame(object):
         return state, player_turn.index
 
     def get_next_player_turn(self):
-        while True:
-            print("getting next turn player...")
+        players_turn = self.players[0]
+        while not self.is_over():
             players_turn = list(filter(lambda p: p.is_turn, self.players))
             if players_turn:
                 players_turn = players_turn[0]
@@ -110,9 +113,6 @@ class CotosGame(object):
 
     def reset(self):
         if not self.deVueltaMode:
-            print("# " * 50)
-            print("De vuelta!")
-            print("# " * 50)
             self.deVueltaMode = True
             self.sing_suits = []
             self.set_lastcards_mode(False)
@@ -182,7 +182,6 @@ class CotosGame(object):
             player.change_seven()
             player_turn = player
             state = self.get_state(player_turn)
-            import pdb; pdb.set_trace()
             res = state, player_turn.index
         else:
             player.play_card(action)
@@ -209,7 +208,4 @@ class CotosGame(object):
 
         TODO: No dependar de la llamada, sino comprobar los score de los team
         '''
-        if self.over:
-            for player in self.players:
-                player.sio.disconnect()
         return self.over
