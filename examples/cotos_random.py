@@ -1,13 +1,37 @@
 ''' A toy example of playing Uno with random agents
 '''
 
+import time
 import rlcard
 from rlcard.agents.random_agent import RandomAgent
 from rlcard.utils.utils import set_global_seed
+from rlcard.games.cotos.player import SERVER
+
+try:
+    import socketio
+except ImportError:
+    print("pip install python-socketio==4.4.0")
+
+
+def create_game(env, game_id=[]):
+    sio = socketio.Client()
+    sio.connect(SERVER)
+    game_id = []
+
+    @sio.on('newGameCreated')
+    def game_created(data):
+        game_id += [data['gameId']]
+
+    sio.emit('createNewGame', {'type': 1111})
+    while len(game_id) == 0:
+        time.sleep(1)
+
+    env.set_game_id(game_id[0])
 
 # Make environment
 env = rlcard.make('cotos')
 episode_num = 1000
+create_game(env)
 
 # Set a global seed
 set_global_seed(0)

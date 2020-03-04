@@ -17,6 +17,7 @@ class CotosGame(object):
     players = []
     over = False
     started = False
+    deVueltaMode = False
 
     def __init__(self, allow_step_back=False):
         self.allow_step_back = allow_step_back
@@ -44,12 +45,15 @@ class CotosGame(object):
 
         # Initialize four players to play the game
         for playerIndex in range(self.num_players):
-            player = Player(self, playerIndex, "Player {}".format(playerIndex))
+            player = Player(
+                self, playerIndex, "Player {}".format(playerIndex),
+                self.server_game_id)
             player.enter_game()
             self.players += [player]
 
         # Wait unitl game not started
         while True:
+            print("Waiting game is started...")
             if self.started:
                 break
             time.sleep(1)
@@ -60,6 +64,7 @@ class CotosGame(object):
 
     def get_next_player_turn(self):
         while True:
+            print("getting next turn player...")
             players_turn = list(filter(lambda p: p.is_turn, self.players))
             if players_turn:
                 players_turn = players_turn[0]
@@ -104,15 +109,16 @@ class CotosGame(object):
         self.lastcards_mode = mode
 
     def reset(self):
-        print("De vuelta!")
-        self.sing_suits = []
-        self.turn_number = 0
-        self.set_lastcards_mode(False)
-        self.trump = None
-        # self.payoffs = [0 for _ in range(self.num_players)]
-        self.winner_team = None
-        self.sing_suits = []
-        self.over = False
+        if not self.deVueltaMode:
+            print("# " * 50)
+            print("De vuelta!")
+            print("# " * 50)
+            self.deVueltaMode = True
+            self.sing_suits = []
+            self.set_lastcards_mode(False)
+            self.trump = None
+            self.winner_team = None
+            self.over = False
 
     def end_game(self, team):
         ''' Establecemos el fin del juego.
@@ -184,6 +190,7 @@ class CotosGame(object):
             # TODO: async
             while turn_number >= self.turn_number and \
                     not self.table[player.index]:
+                print("Waiting turn...")
                 time.sleep(1)
 
             player_turn = self.get_next_player_turn()

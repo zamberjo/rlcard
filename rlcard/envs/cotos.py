@@ -111,3 +111,6 @@ class CotosEnv(Env):
             legal_id = ACTION_SPACE[card_legal_action]
             legal_ids += [legal_id]
         return legal_ids
+
+    def set_game_id(self, game_id):
+        self.game.server_game_id = game_id

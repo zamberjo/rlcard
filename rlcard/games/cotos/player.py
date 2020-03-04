@@ -1,6 +1,6 @@
 
 # import asyncio
-
+import time
 
 from rlcard.games.cotos.card import CARDS
 from rlcard.games.cotos.card import CotosCard as Card
@@ -11,8 +11,7 @@ try:
 except ImportError:
     print("pip install python-socketio==4.4.0")
 
-# SERVER = "https://cotosgame.es/"
-SERVER = "http://localhost:9999"
+SERVER = "http://localhost:9000"
 
 
 class CotosPlayer(object):
@@ -27,8 +26,9 @@ class CotosPlayer(object):
     hand = []
     is_turn = False
     payoff = None
+    server_game_id = None
 
-    def __init__(self, game, _id, name):
+    def __init__(self, game, _id, name, server_game_id):
         ''' Every player should have a unique player id
         '''
         self.game = game
@@ -37,6 +37,7 @@ class CotosPlayer(object):
         self.payoff = 0
         self.sio = socketio.Client()
         self.define_events()
+        self.server_game_id = server_game_id
 
     def connect(self):
         self.sio.connect(SERVER)
@@ -49,10 +50,13 @@ class CotosPlayer(object):
         return self.sio.emit(event, params)
 
     def enter_game(self):
-        return self.emit('newPlayer', {'playerName': self.name})
+        return self.emit('playerJoinGame', {
+            'login': self.name,
+            'gameId': self.server_game_id,
+        })
 
     def set_hand(self, cards_data):
-        if not cards_data:
+        if not cards_data or not any(cards_data):
             return
         self.hand = []
         for card_data in cards_data:
@@ -189,16 +193,16 @@ class CotosPlayer(object):
         return check_seven
 
     def get_next_turn_player(self):
-        self.emit("getNextTurnPlayer", {})
+        self.emit("gameGetNextTurn", {})
 
     def sing(self, suit):
         ''' TODO: await '''
-        self.emit("doSing", {"suit": suit})
+        self.emit("playerSing", {"suit": suit})
         self.is_turn = False
 
     def change_seven(self):
         ''' TODO: await '''
-        self.emit("doChangeSevenTrump", {})
+        self.emit("playerChangeSeven", {})
         self.is_turn = False
 
     def play_card(self, card_name):
@@ -207,7 +211,10 @@ class CotosPlayer(object):
         if not card_index:
             raise NotImplementedError
         card = Card(card_index[0])
-        self.emit("playCard", {"card": card.serializer()})
+        self.emit("playerPlayCard", {
+            "card": card.serializer(),
+            "gameId": self.server_game_id,
+        })
         self.is_turn = False
 
     def define_events(self):
@@ -223,55 +230,58 @@ class CotosPlayer(object):
             self.team = player_data.get("team", {}).get("id")
             self.set_hand(player_data.get("hand"))
 
-        @sio.on('canStartGame')
+        @sio.on('gameCanStart')
         def start_game(data):
-            sio.emit("getHand", {})
-            sio.emit("getNextTurnPlayer", {})
-            sio.emit("getTrump", {})
+            sio.emit("playerGetHand", {})
+            sio.emit("gameGetNextTurn", {})
+            sio.emit("gameGetTrump", {})
             self.game.started = True
 
-        @sio.on('setHand')
+        @sio.on('playerSetHand')
         def set_hand(data):
-            self.set_hand(data.get("hand"))
+            if data.get("hand"):
+                self.set_hand(data.get("hand"))
+            else:
+                sio.emit("playerGetHand", {})
 
-        @sio.on('setNextTurnPlayer')
+        @sio.on('gameSetNextTurn')
         def set_next_turn_player(data):
             self.is_turn = bool(
                 data.get("nextTurnPlayer", {}).get("id", False) == self.id)
 
-        @sio.on('setTrump')
+        @sio.on('gameSetTrump')
         def set_trump(data):
             card_trump = Card(data.get("trump", {}).get("id"))
             self.game.set_trump(card_trump)
 
-        @sio.on('trumpChanged')
+        @sio.on('playerChangedSeven')
         def trumpChanged(data):
             if data.get("error"):
                 return
-            if self.index == data.get("playerIndex"):
-                sio.emit("getHand", {})
+            if self.id == data.get("playerId"):
+                sio.emit("playerGetHand", {})
                 self.is_turn = False
             if data.get("newTrump"):
                 card_trump = Card(data.get("newTrump", {}).get("id"))
                 self.game.set_trump(card_trump)
 
-        @sio.on('singed')
+        @sio.on('playerSinged')
         def singed(data):
             if data.get("suit"):
                 self.game.add_sing_suits(data.get("suit"))
-            if data.get("playerIndex") == self.index:
+            if data.get("playerId") == self.id:
                 score = data.get("scoreAdded")
                 self.add_payoff(score)
 
-        @sio.on('playedCard')
+        @sio.on('playerPlayedCard')
         def played_card(data):
-            player_index = data.get("playerIndex")
+            player_index = data.get("playerId")
             if data.get("error"):
                 self.is_turn = True
                 return
 
             card = Card(data.get("card", {}).get("id"))
-            if self.index == player_index:
+            if self.id == player_index:
                 self.hand = [c for c in self.hand if c.id != card.id]
                 self.game.play_card(self, card)
 
@@ -281,28 +291,29 @@ class CotosPlayer(object):
                     mult = -1
                 self.add_payoff(data.get("tableScore") * mult)
                 self.game.set_end_turn(data.get("turnTeamWinner"))
-                sio.emit("getHand", {})
+                sio.emit("playerGetHand", {})
 
             if data.get("endGame"):
-                sio.emit('checkWinners', {})
+                sio.emit('gameCheckWinners', {})
 
             elif data.get("lastCardsMode"):
                 self.game.set_lastcards_mode(True)
 
-        @sio.on('endGame')
+        @sio.on('gameEndGame')
         def end_game(data):
             if data.get("deVueltaMode"):
                 self.game.reset()
                 self.is_turn = False
-                sio.emit("getTrump", {})
-                sio.emit("getHand", {})
-                sio.emit("getNextTurnPlayer", {})
+                sio.emit("gameGetTrump", {})
+                sio.emit("playerGetHand", {})
+                sio.emit("gameGetNextTurn", {})
             else:
                 self.winner_team = "team1"
                 self.team1_score = data.get("team1")
                 self.team2_score = data.get("team2")
                 if data.get("team1") < data.get("team2"):
                     self.winner_team = "team2"
+                print("Finaliza la partida!")
                 self.game.end_game(self.winner_team)
 
     def available_order(self):

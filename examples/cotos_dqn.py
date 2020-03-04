@@ -1,5 +1,7 @@
 ''' An example of learning a Deep-Q Agent on Dou Dizhu
 '''
+import time
+import sys
 
 import tensorflow as tf
 
@@ -8,10 +10,32 @@ from rlcard.agents.dqn_agent import DQNAgent
 from rlcard.agents.random_agent import RandomAgent
 from rlcard.utils.utils import set_global_seed
 from rlcard.utils.logger import Logger
+from rlcard.games.cotos.player import SERVER
+
+try:
+    import socketio
+except ImportError:
+    print("pip install python-socketio==4.4.0")
+
+
+def create_game(env):
+    sio = socketio.Client()
+    sio.connect(SERVER)
+    game_id=[]
+
+    @sio.on('newGameCreated')
+    def game_created(data):
+        env.set_game_id(data['gameId'])
+
+    sio.emit('createNewGame', {'type': 1111})
+
 
 # Make environment
 env = rlcard.make('cotos')
+# if len(sys.argv)
+create_game(env)
 eval_env = rlcard.make('cotos')
+create_game(eval_env)
 
 # Set the iterations numbers and how frequently we evaluate/save plot
 evaluate_every = 100
@@ -32,6 +56,8 @@ figure_path = root_path + 'figures/'
 
 # Set a global seed
 set_global_seed(0)
+
+# eval_env.game.server_game_id = env.game.server_game_id
 
 with tf.compat.v1.Session() as sess:
     # Set agents
@@ -64,8 +90,8 @@ with tf.compat.v1.Session() as sess:
         print("#" * 50)
         print("EPISODE: ", episode)
         # Generate data from the environment
-        trajectories, _ = env.run(is_training=True)
         import pdb; pdb.set_trace()
+        trajectories, _ = env.run(is_training=True)
 
         # Feed transitions into agent memory, and train the agent
         for ts in trajectories[0]:
